@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1056345510227",
+    "project_id": "splitcheck-9f211",
+    "storage_bucket": "splitcheck-9f211.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1056345510227:android:0f9adc8d2c309c5b3011a6",
+        "android_client_info": {
+          "package_name": "com.example.splitcheck"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEAoratbKv5cCD-Fc_bLr9Jq5QM2VaQ94"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
