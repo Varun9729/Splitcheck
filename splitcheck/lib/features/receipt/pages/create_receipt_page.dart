@@ -18,7 +18,9 @@ class CreateReceiptPage extends StatefulWidget {
 class _CreateReceiptPageState extends State<CreateReceiptPage> {
   final repository = ReceiptRepository();
   final ImagePicker _picker = ImagePicker();
-  final visionService = VisionService('YOUR_API_KEY_HERE');
+  final visionService = VisionService(
+    'YOUR_VISION_API_KEY', // Replace with your actual API key
+  );
 
   // Controller for editable field
   final _venmoController = TextEditingController(text: "@varun");
@@ -200,12 +202,37 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
 
                   // Show selected image and parsed data
                   if (_pickedImage != null) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _pickedImage!,
-                        height: 200,
-                        fit: BoxFit.cover,
+                    GestureDetector(
+                      onTap: () {
+                        if (_pickedImage != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                backgroundColor: Colors.black,
+                                body: GestureDetector(
+                                  onTap: () => Navigator.of(context).pop(),
+                                  child: Center(
+                                    child: Hero(
+                                      tag: 'pickedImage',
+                                      child: Image.file(_pickedImage!),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: Hero(
+                        tag: 'pickedImage',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            _pickedImage!,
+                            height: 200,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
