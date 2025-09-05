@@ -20,8 +20,8 @@ class ParsedReceipt {
 
 String normalize(String line) {
   return line
-      .replaceAll(RegExp(r'[^\w\s\.\$\d]'), '') // keep numbers and $ for prices
-      .replaceAll(RegExp(r'\s+'), ' ') // collapse spaces
+      .replaceAll(RegExp(r'[^\w\s\.\$\d]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
       .trim()
       .toLowerCase();
 }
@@ -30,121 +30,187 @@ ParsedReceipt parseReceiptText(String text) {
   final lines = text.split('\n');
   final items = <ReceiptItem>[];
 
-  // More flexible regex patterns to handle variable spacing
-  final itemWithQuantityRegex = RegExp(
-    r'^\s*(\d+)\s+(.+?)\s+\$?(\d+(?:\.\d{1,2})?)\s*$',
-  );
-  final itemRegex = RegExp(r'^(.+?)\s+\$?(\d+(?:\.\d{1,2})?)\s*$');
-  final totalLineRegex = RegExp(r'(.+?)\s+\$?(\d+(?:\.\d{1,2})?)\s*$');
-
   double subtotal = 0.0;
   double tax = 0.0;
   double tip = 0.0;
   double total = 0.0;
 
-  // Debug: print raw text and line splitting
-  print("=== RAW TEXT ===");
-  print("Text length: ${text.length}");
-  print("Raw text: '$text'");
-  print("=== SPLIT LINES ===");
-  print("Total lines: ${lines.length}");
+  // Collect all quantity items and all standalone prices
+  List<Map<String, dynamic>> allItems = [];
+  List<double> allPrices = [];
+
+  print("=== STEP 1: COLLECTING ITEMS AND PRICES ===");
 
   for (int i = 0; i < lines.length; i++) {
-    print("Raw line $i: '${lines[i]}' (length: ${lines[i].length})");
-  }
+    final line = lines[i].trim();
+    if (line.isEmpty) continue;
 
-  print("=== PARSING LINES ===");
+    final normalized = normalize(line);
+    print("Line $i: '$line' -> '$normalized'");
 
-  for (int i = 0; i < lines.length; i++) {
-    final line = lines[i];
-    final cleanLine = line.trim();
-    if (cleanLine.isEmpty) continue;
-
-    print("Line $i: '$cleanLine'");
-
-    final normalized = normalize(cleanLine);
-    print("  Normalized: '$normalized'");
-
-    // Skip obvious non-item lines
-    if (_isHeaderLine(normalized) || _isFooterLine(normalized)) {
-      print("  -> Skipped (header/footer)");
+    // Skip unwanted lines
+    if (line.contains('[') ||
+        normalized.contains('tip') && normalized.contains('%') ||
+        RegExp(r'^[A-Za-z\s]+,\s*[A-Z]{2}\s+\d{5}').hasMatch(line) ||
+        _isHeaderLine(normalized, i) ||
+        _isFooterLine(normalized)) {
+      print("  -> Skipped");
       continue;
     }
 
-    // Check for totals first (subtotal, tax, tip, total)
-    if (_parseTotalLine(normalized)) {
-      final match = totalLineRegex.firstMatch(cleanLine);
-      if (match != null) {
-        final price = double.tryParse(match.group(2)!) ?? 0.0;
-        print("  -> Total line: ${match.group(1)} = \$${price}");
-
-        if (normalized.contains('subtotal')) {
+    // ✅ Extra: Inline subtotal/tax/tip/total like "Subtotal 45.67"
+    final inlineTotalMatch = RegExp(
+      r'^(subtotal|tax|tip|total)\s+\$?(\d+(?:\.\d{1,2})?)$',
+      caseSensitive: false,
+    ).firstMatch(normalized);
+    if (inlineTotalMatch != null) {
+      final label = inlineTotalMatch.group(1)!.toLowerCase();
+      final price = double.tryParse(inlineTotalMatch.group(2)!) ?? 0.0;
+      if (price > 0.0) {
+        if (label == "subtotal") {
           subtotal = price;
-        } else if (normalized.contains('tax')) {
+          print("  -> Inline subtotal: \$${price}");
+        } else if (label == "tax") {
           tax = price;
-        } else if (normalized.contains('tip') ||
-            normalized.contains('gratuity')) {
+          print("  -> Inline tax: \$${price}");
+        } else if (label == "tip") {
           tip = price;
-        } else if (normalized.contains('total') &&
-            !normalized.contains('subtotal')) {
+          print("  -> Inline tip: \$${price}");
+        } else if (label == "total") {
           total = price;
+          print("  -> Inline total: \$${price}");
         }
+        continue;
       }
-      continue;
     }
 
-    // Try to parse as item with quantity (e.g., "1 Reyka $22.00")
-    final quantityMatch = itemWithQuantityRegex.firstMatch(cleanLine);
+    // Collect quantity items
+    final quantityMatch = RegExp(r'^\s*(\d+)\s+(.+)$').firstMatch(line);
     if (quantityMatch != null) {
       final quantity = int.tryParse(quantityMatch.group(1)!) ?? 1;
       final name = quantityMatch.group(2)!.trim();
-      final price = double.tryParse(quantityMatch.group(3)!) ?? 0.0;
 
-      print("  -> Quantity item: $quantity x '$name' = \$${price}");
+      if (name.length >= 3 && !_isSystemLine(name)) {
+        allItems.add({'name': name, 'quantity': quantity});
+        print("  -> Item: $quantity x '$name'");
+        continue;
+      }
+    }
 
-      // Only add if it looks like a real item
-      if (price > 0 && price < 1000 && !_isSystemLine(name)) {
-        // For your receipt format, each line is actually one item, not quantity
-        items.add(ReceiptItem(itemName: name, itemPrice: price));
-        print("    Added: '$name' \$${price}");
+    // Collect totals with next-line prices
+    if (_parseTotalLine(normalized) && i + 1 < lines.length) {
+      final nextLine = lines[i + 1].trim();
+      final nextPriceMatch = RegExp(
+        r'^\s*\$?(\d+(?:\.\d{1,2})?)\s*$',
+      ).firstMatch(nextLine);
+
+      if (nextPriceMatch != null) {
+        final price = double.tryParse(nextPriceMatch.group(1)!) ?? 0.0;
+
+        // Only accept reasonable prices for totals
+        if (price > 0.50) {
+          if (normalized == 'subtotal') {
+            subtotal = price;
+            print("  -> Subtotal: \$${price}");
+          } else if (normalized == 'tax') {
+            tax = price;
+            print("  -> Tax: \$${price}");
+          } else if (normalized == 'total' && total == 0.0 && price < 2000) {
+            total = price;
+            print("  -> Total: \$${price}");
+          }
+
+          i++; // Skip next line
+          continue;
+        }
+      }
+    }
+
+    // Collect standalone prices
+    final priceMatch = RegExp(
+      r'^\s*(?:\$?\s*(\d+(?:\.\d{1,2})?)|\s*(\d+(?:\.\d{1,2})?)\$)\s*$',
+    ).firstMatch(line);
+
+    if (priceMatch != null) {
+      final price = double.tryParse(
+        priceMatch.group(1) ?? priceMatch.group(2) ?? '',
+      );
+      if (price! > 0) {
+        // Check for handwritten total (priority over label totals)
+        if (subtotal > 0 && tax > 0) {
+          final receiptTotal = subtotal + tax;
+          if (price > receiptTotal + 1.0) {
+            tip = double.parse((price - receiptTotal).toStringAsFixed(2));
+            total = price;
+            print(
+              "  -> Handwritten total: \$${price}, calculated tip: \$${tip}",
+            );
+            continue;
+          }
+        }
+
+        allPrices.add(price);
+        print("  -> Price: \$${price}");
       }
       continue;
     }
+  }
 
-    // Try to parse as regular item (e.g., "Martini di Amalfi $24.00")
-    final itemMatch = itemRegex.firstMatch(cleanLine);
-    if (itemMatch != null) {
-      final name = itemMatch.group(1)!.trim();
-      final price = double.tryParse(itemMatch.group(2)!) ?? 0.0;
+  print("=== STEP 2: ASSIGNING PRICES TO ITEMS ===");
+  print("Items found: ${allItems.length}");
+  print("Prices found: ${allPrices.length}");
 
-      print("  -> Regular item: '$name' = \$${price}");
+  // Assign first N prices to items
+  int itemCount = allItems.length;
 
-      // Only add if it looks like a real item
-      if (price > 0 && price < 1000 && !_isSystemLine(name)) {
-        items.add(ReceiptItem(itemName: name, itemPrice: price));
-        print("    Added: '$name' \$${price}");
-      }
-    } else {
-      print("  -> No match");
+  for (int i = 0; i < itemCount && i < allPrices.length; i++) {
+    final item = allItems[i];
+    final price = allPrices[i];
+    final name = item['name'] as String;
+    final quantity = item['quantity'] as int;
+
+    print("Assigning \$${price} to $quantity x '$name'");
+
+    for (int j = 0; j < quantity; j++) {
+      items.add(ReceiptItem(itemName: name, itemPrice: price / quantity));
     }
   }
 
-  // If no tip was found in OCR but we have a total > subtotal + tax,
-  // calculate tip from the difference
-  if (tip == 0.0 && total > 0.0 && subtotal > 0.0) {
-    final calculatedTip = total - subtotal - tax;
-    if (calculatedTip > 0) {
-      tip = calculatedTip;
-      print("Calculated tip from total: \$${tip}");
+  // Assign remaining prices to totals if not already set
+  List<double> remainingPrices = allPrices.skip(itemCount).toList();
+  remainingPrices.sort();
+
+  print("=== STEP 3: ASSIGNING REMAINING PRICES TO TOTALS ===");
+  print("Remaining prices: ${remainingPrices.map((p) => '\$${p}').join(', ')}");
+
+  for (final price in remainingPrices) {
+    if (tax == 0.0 && price < 20) {
+      tax = price;
+      print("Assigned tax: \$${price}");
+    } else if (subtotal == 0.0 && price > 20) {
+      subtotal = price;
+      print("Assigned subtotal: \$${price}");
+    } else if (total == 0.0 && price > subtotal) {
+      total = price;
+      print("Assigned total: \$${price}");
     }
+  }
+
+  // Calculate missing values
+  if (total == 0.0) {
+    total = subtotal + tax + tip;
+  }
+
+  if (tip == 0.0 && total > subtotal + tax + 0.5) {
+    tip = double.parse((total - subtotal - tax).toStringAsFixed(2));
   }
 
   print("=== FINAL RESULTS ===");
   print("Items: ${items.length}");
-  print("Subtotal: \$${subtotal}");
-  print("Tax: \$${tax}");
-  print("Tip: \$${tip}");
-  print("Total: \$${total}");
+  print("Subtotal: \$${subtotal.toStringAsFixed(2)}");
+  print("Tax: \$${tax.toStringAsFixed(2)}");
+  print("Tip: \$${tip.toStringAsFixed(2)}");
+  print("Total: \$${total.toStringAsFixed(2)}");
 
   return ParsedReceipt(
     items: items,
@@ -155,59 +221,108 @@ ParsedReceipt parseReceiptText(String text) {
   );
 }
 
-bool _isHeaderLine(String normalized) {
-  return normalized.contains('server') ||
-      normalized.contains('check') ||
-      normalized.contains('ordered') ||
-      normalized.contains('table') ||
-      normalized.contains('guest') ||
-      normalized.contains('date') ||
-      normalized.contains('time') ||
-      normalized.contains('pm') ||
-      normalized.contains('am') ||
-      normalized.contains('mariner') ||
-      normalized.contains('soho') ||
-      normalized.contains('thompson') ||
-      normalized.contains('street') ||
-      normalized.contains('new york');
+bool _isHeaderLine(String normalized, int lineIndex) {
+  if (lineIndex < 3) return true;
+
+  final patterns = [
+    'server',
+    'check',
+    'ordered',
+    'table',
+    'guest',
+    'date',
+    'time',
+    'visa',
+    'mastercard',
+    'credit',
+    'card',
+    'phone',
+    'address',
+    'street',
+    'avenue',
+    'road',
+    'city',
+    'state',
+    'zip',
+    'authorization',
+    'auth',
+    'approval',
+    'approved',
+    'transaction',
+  ];
+
+  for (final pattern in patterns) {
+    if (normalized.contains(pattern)) return true;
+  }
+
+  return RegExp(r'\d+.*(st|street|ave|avenue)').hasMatch(normalized) ||
+      RegExp(r'\d{1,2}[/\-:]\d{1,2}').hasMatch(normalized) ||
+      normalized.length < 3;
 }
 
 bool _isFooterLine(String normalized) {
-  return normalized.contains('credit card') ||
-      normalized.contains('visa') ||
-      normalized.contains('mastercard') ||
-      normalized.contains('authorization') ||
-      normalized.contains('approval') ||
-      normalized.contains('payment id') ||
-      normalized.contains('transaction') ||
-      normalized.contains('contactless') ||
-      normalized.contains('application') ||
-      normalized.contains('card reader') ||
-      normalized.contains('amount') ||
-      normalized.contains('sale') ||
-      normalized.contains('approved') ||
-      normalized.contains('bbpos');
+  final patterns = [
+    'credit card',
+    'visa',
+    'mastercard',
+    'authorization',
+    'approval',
+    'payment id',
+    'transaction',
+    'contactless',
+    'application',
+    'card reader',
+    'amount',
+    'sale',
+    'approved',
+    'signature',
+  ];
+
+  for (final pattern in patterns) {
+    if (normalized.contains(pattern)) return true;
+  }
+  return false;
 }
 
 bool _parseTotalLine(String normalized) {
-  return normalized.contains('subtotal') ||
-      normalized.contains('tax') ||
-      normalized.contains('tip') ||
-      normalized.contains('gratuity') ||
-      (normalized.contains('total') && !normalized.contains('subtotal'));
+  return normalized == 'subtotal' ||
+      normalized == 'tax' ||
+      normalized == 'tip' ||
+      normalized == 'total';
 }
 
 bool _isSystemLine(String name) {
   final lowerName = name.toLowerCase();
-  return lowerName.contains('auth') ||
-      lowerName.contains('approval') ||
-      lowerName.contains('transaction') ||
-      lowerName.contains('card') ||
-      lowerName.contains('payment') ||
-      lowerName.length < 3; // Increased from 2 to 3
+
+  // Only skip if it's clearly a system keyword, not drinks/food
+  const patterns = [
+    'auth',
+    'approval',
+    'transaction',
+    'card',
+    'payment',
+    'visa',
+    'mastercard',
+    'sale',
+    'approved',
+    'amount',
+    'application',
+    'subtotal',
+    'total',
+    'tax',
+    'server',
+    'check',
+    'tip',
+  ];
+
+  for (final pattern in patterns) {
+    if (lowerName.contains(pattern)) {
+      return true;
+    }
+  }
+  return false;
 }
 
-// Helper function to manually set tip if OCR missed handwritten tip
 ParsedReceipt setManualTip(ParsedReceipt receipt, double manualTip) {
   return ParsedReceipt(
     items: receipt.items,
