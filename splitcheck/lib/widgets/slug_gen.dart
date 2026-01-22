@@ -1,5 +1,7 @@
 import 'dart:math';
 
+//Slug generation utility
+
 String generateSlug(int length) {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   final rand = Random();

@@ -19,7 +19,7 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
   final repository = ReceiptRepository();
   final ImagePicker _picker = ImagePicker();
   final visionService = VisionService(
-    'YOUR_VISION_API_KEY', // Replace with your actual API key
+    'AIzaSyAL5K46AZT_FvXa6sZTqXTk5bBF887e8v4',
   );
 
   // Controller for editable field
@@ -214,7 +214,11 @@ class _CreateReceiptPageState extends State<CreateReceiptPage> {
                                   child: Center(
                                     child: Hero(
                                       tag: 'pickedImage',
-                                      child: Image.file(_pickedImage!),
+                                      child: InteractiveViewer(
+                                        minScale: 0.5,
+                                        maxScale: 5.0,
+                                        child: Image.file(_pickedImage!),
+                                      ),
                                     ),
                                   ),
                                 ),

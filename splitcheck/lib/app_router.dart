@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'features/receipt/pages/create_receipt_page.dart';
 import 'features/receipt/pages/public_receipt_page.dart';
 
+//App router configuration using GoRouter
 final appRouter = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const CreateReceiptPage()),

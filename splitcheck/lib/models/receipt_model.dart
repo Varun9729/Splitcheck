@@ -20,10 +20,12 @@ class ReceiptItem {
   String itemName;
   double itemPrice;
   final String? assignedTo;
+  final int? quantity;
 
   ReceiptItem({
     required this.itemName,
     required this.itemPrice,
     this.assignedTo,
+    this.quantity = 1,
   });
 }

@@ -29,7 +29,7 @@ class ReceiptRepository {
     });
   }
 
-  //Loading a receipt by slug
+  //Loading a receipt
 
   Future<Receipt?> getReceipt(String id) async {
     final doc = await firestore.collection('receipts').doc(id).get();

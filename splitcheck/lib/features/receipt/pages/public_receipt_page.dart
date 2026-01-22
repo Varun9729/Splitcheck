@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:splitcheck/features/receipt/data/receipt_repository.dart';
 import 'package:splitcheck/models/receipt_model.dart';
 
+//Displays the public receipt page based on the slug provided in the URL
 class PublicReceiptPage extends StatelessWidget {
   final String slug;
   const PublicReceiptPage({super.key, required this.slug});

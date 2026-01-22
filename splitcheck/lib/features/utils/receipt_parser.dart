@@ -294,7 +294,7 @@ bool _parseTotalLine(String normalized) {
 bool _isSystemLine(String name) {
   final lowerName = name.toLowerCase();
 
-  // Only skip if it's clearly a system keyword, not drinks/food
+  // Only skip if it's clearly a system keyword, not drinks/food items
   const patterns = [
     'auth',
     'approval',
