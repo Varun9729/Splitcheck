@@ -18,9 +18,7 @@ class CreateReceiptPage extends StatefulWidget {
 class _CreateReceiptPageState extends State<CreateReceiptPage> {
   final repository = ReceiptRepository();
   final ImagePicker _picker = ImagePicker();
-  final visionService = VisionService(
-    'AIzaSyAL5K46AZT_FvXa6sZTqXTk5bBF887e8v4',
-  );
+  final visionService = VisionService();
 
   // Controller for editable field
   final _venmoController = TextEditingController(text: "@varun");
