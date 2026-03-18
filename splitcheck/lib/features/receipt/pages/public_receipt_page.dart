@@ -224,7 +224,7 @@ class _PublicReceiptPageState extends State<PublicReceiptPage> {
                             if (participants.isNotEmpty) ...[
                               _buildAvatarRow(participants),
                               const SizedBox(height: 6),
-                              if (_hasJoined)
+                              if (_hasJoined) ...[
                                 Text(
                                   'Tap items to claim and share the receipt with your friends.',
                                   style: TextStyle(
@@ -233,6 +233,18 @@ class _PublicReceiptPageState extends State<PublicReceiptPage> {
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
+                                const SizedBox(height: 12),
+                                OutlinedButton.icon(
+                                  onPressed: _shareReceipt,
+                                  icon: const Icon(Icons.share, size: 18),
+                                  label: const Text('Share Receipt Link'),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size(double.infinity, 44),
+                                    side: const BorderSide(color: AppColors.primary),
+                                    foregroundColor: AppColors.primary,
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 16),
                             ],
 
