@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'splitcheck-9f211.firebaseapp.com',
     storageBucket: 'splitcheck-9f211.firebasestorage.app',
   );
+
 }

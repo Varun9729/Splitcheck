@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:splitcheck/app_router.dart';
 import 'package:splitcheck/firebase_options.dart';
+import 'package:splitcheck/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,10 +24,8 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'SplitCheck',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF6750A4),
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
       routerConfig: appRouter,
     );
   }

@@ -12,6 +12,10 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SplitCheck needs access to your photos so you can upload receipt images.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SplitCheck needs camera access so you can take a photo of your receipt.</string>
 	<key>CFBundleName</key>
 	<string>splitcheck</string>
 	<key>CFBundlePackageType</key>
@@ -42,6 +46,12 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>venmo</string>
+		<string>paypal</string>
+		<string>splitwise</string>
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
